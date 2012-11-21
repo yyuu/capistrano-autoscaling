@@ -63,15 +63,17 @@ module Capistrano
           _cset(:autoscaling_secret_access_key) {
             fetch(:aws_secret_access_key, ENV["AWS_SECRET_ACCESS_KEY"]) or abort("AWS_SECRET_ACCESS_KEY is not set")
           }
-          _cset(:autoscaling_aws_options) {{
-            :access_key_id => autoscaling_access_key_id,
-            :secret_access_key => autoscaling_secret_access_key,
-            :log_level => fetch(:autoscaling_log_level, :debug),
-            :auto_scaling_endpoint => autoscaling_autoscaling_endpoint,
-            :cloud_watch_endpoint => autoscaling_cloudwatch_endpoint,
-            :ec2_endpoint => autoscaling_ec2_endpoint,
-            :elb_endpoint => autoscaling_elb_endpoint,
-          }}
+          _cset(:autoscaling_aws_options) {
+            {
+              :access_key_id => autoscaling_access_key_id,
+              :secret_access_key => autoscaling_secret_access_key,
+              :log_level => fetch(:autoscaling_log_level, :debug),
+              :auto_scaling_endpoint => autoscaling_autoscaling_endpoint,
+              :cloud_watch_endpoint => autoscaling_cloudwatch_endpoint,
+              :ec2_endpoint => autoscaling_ec2_endpoint,
+              :elb_endpoint => autoscaling_elb_endpoint,
+            }.merge(fetch(:autoscaling_aws_extra_options, {}))
+          }
           _cset(:autoscaling_autoscaling_client) { AWS::AutoScaling.new(fetch(:autoscaling_autoscaling_aws_options, autoscaling_aws_options)) }
           _cset(:autoscaling_cloudwatch_client) { AWS::CloudWatch.new(fetch(:autoscaling_cloudwatch_options, autoscaling_aws_options)) }
           _cset(:autoscaling_ec2_client) { AWS::EC2.new(fetch(:autoscaling_ec2_options, autoscaling_aws_options)) }
@@ -119,17 +121,21 @@ module Capistrano
               },
             ]
           }
-          _cset(:autoscaling_elb_instance_options) {{
-            :availability_zones => fetch(:autoscaling_elb_availability_zones, autoscaling_availability_zones),
-            :listeners => autoscaling_elb_listeners,
-          }}
-          _cset(:autoscaling_elb_health_check_options) {{
-            :healthy_threshold => autoscaling_elb_healthcheck_healthy_threshold.to_i,
-            :unhealthy_threshold => autoscaling_elb_healthcheck_unhealthy_threshold.to_i,
-            :interval => autoscaling_elb_healthcheck_interval.to_i,
-            :timeout => autoscaling_elb_healthcheck_timeout.to_i,
-            :target => autoscaling_elb_healthcheck_target,
-          }}
+          _cset(:autoscaling_elb_instance_options) {
+            {
+              :availability_zones => fetch(:autoscaling_elb_availability_zones, autoscaling_availability_zones),
+              :listeners => autoscaling_elb_listeners,
+            }.merge(fetch(:autoscaling_elb_instance_extra_options, {}))
+          }
+          _cset(:autoscaling_elb_health_check_options) {
+            {
+              :healthy_threshold => autoscaling_elb_healthcheck_healthy_threshold.to_i,
+              :unhealthy_threshold => autoscaling_elb_healthcheck_unhealthy_threshold.to_i,
+              :interval => autoscaling_elb_healthcheck_interval.to_i,
+              :timeout => autoscaling_elb_healthcheck_timeout.to_i,
+              :target => autoscaling_elb_healthcheck_target,
+            }.merge(fetch(:autoscaling_elb_health_check_extra_options, {}))
+          }
 
 ## EC2
           _cset(:autoscaling_ec2_instance_name) { autoscaling_application }
@@ -152,7 +158,9 @@ module Capistrano
               abort("No EC2 instances are ready to create AMI.")
             end
           }
-          _cset(:autoscaling_image_options, { :no_reboot => true })
+          _cset(:autoscaling_image_options) {
+            { :no_reboot => true }.merge(fetch(:autoscaling_image_extra_options, {}))
+          }
           _cset(:autoscaling_image_tag_name) { autoscaling_application }
           _cset(:autoscaling_image) {
             autoscaling_ec2_client.images.with_owner("self").tagged("Name").tagged_values(autoscaling_image_name).to_a.first
@@ -168,18 +176,22 @@ module Capistrano
           _cset(:autoscaling_launch_configuration_name_prefix, "lc-")
           _cset(:autoscaling_launch_configuration_name) { "#{autoscaling_launch_configuration_name_prefix}#{autoscaling_image_name}" }
           _cset(:autoscaling_launch_configuration_instance_type) { autoscaling_instance_type }
-          _cset(:autoscaling_launch_configuration_options) {{
-            :security_groups => fetch(:autoscaling_launch_configuration_security_groups, autoscaling_security_groups),
-          }}
+          _cset(:autoscaling_launch_configuration_options) {
+            {
+              :security_groups => fetch(:autoscaling_launch_configuration_security_groups, autoscaling_security_groups),
+            }.merge(fetch(:autoscaling_launch_configuration_extra_options, {}))
+          }
 
 ## AutoScalingGroup
           _cset(:autoscaling_group_name_prefix, "asg-")
           _cset(:autoscaling_group_name) { "#{autoscaling_group_name_prefix}#{autoscaling_application}" }
-          _cset(:autoscaling_group_options) {{
-            :availability_zones => fetch(:autoscaling_group_availability_zones, autoscaling_availability_zones),
-            :min_size => fetch(:autoscaling_group_min_size, autoscaling_min_size),
-            :max_size => fetch(:autoscaling_group_max_size, autoscaling_max_size),
-          }}
+          _cset(:autoscaling_group_options) {
+            {
+              :availability_zones => fetch(:autoscaling_group_availability_zones, autoscaling_availability_zones),
+              :min_size => fetch(:autoscaling_group_min_size, autoscaling_min_size),
+              :max_size => fetch(:autoscaling_group_max_size, autoscaling_max_size),
+            }.merge(fetch(:autoscaling_group_extra_options, {}))
+          }
           _cset(:autoscaling_group) { autoscaling_autoscaling_client.groups[autoscaling_group_name] }
 
 ## ScalingPolicy
@@ -192,23 +204,29 @@ module Capistrano
             :cooldown => fetch(:autoscaling_expand_policy_cooldown, 300),
             :type => fetch(:autoscaling_expand_policy_type, "ChangeInCapacity"),
           }}
-          _cset(:autoscaling_shrink_policy_options) {{
-            :adjustment => fetch(:autoscaling_shrink_policy_adjustment, -1),
-            :cooldown => fetch(:autoscaling_shrink_policy_cooldown, 300),
-            :type => fetch(:autoscaling_shrink_policy_type, "ChangeInCapacity"),
-          }}
+          _cset(:autoscaling_shrink_policy_options) {
+            {
+              :adjustment => fetch(:autoscaling_shrink_policy_adjustment, -1),
+              :cooldown => fetch(:autoscaling_shrink_policy_cooldown, 300),
+              :type => fetch(:autoscaling_shrink_policy_type, "ChangeInCapacity"),
+            }.merge(fetch(:autoscaling_shrink_policy_extra_options, {}))
+          }
           _cset(:autoscaling_expand_policy) { autoscaling_group.scaling_policies[autoscaling_expand_policy_name] }
           _cset(:autoscaling_shrink_policy) { autoscaling_group.scaling_policies[autoscaling_shrink_policy_name] }
 
 ## Alarm
-          _cset(:autoscaling_expand_alarm_options) {{
-            :period => fetch(:autoscaling_expand_alarm_period, 60),
-            :evaluation_periods => fetch(:autoscaling_expand_alarm_evaluation_periods, 1),
-          }}
-          _cset(:autoscaling_shrink_alarm_options) {{
-            :period => fetch(:autoscaling_shrink_alarm_period, 60),
-            :evaluation_periods => fetch(:autoscaling_shrink_alarm_evaluation_periods, 1),
-          }}
+          _cset(:autoscaling_expand_alarm_options) {
+            {
+              :period => fetch(:autoscaling_expand_alarm_period, 60),
+              :evaluation_periods => fetch(:autoscaling_expand_alarm_evaluation_periods, 1),
+            }.merge(fetch(:autoscaling_expand_alarm_extra_options, {}))
+          }
+          _cset(:autoscaling_shrink_alarm_options) {
+            {
+              :period => fetch(:autoscaling_shrink_alarm_period, 60),
+              :evaluation_periods => fetch(:autoscaling_shrink_alarm_evaluation_periods, 1),
+            }.merge(fetch(:autoscaling_shrink_alarm_extra_options, {}))
+          }
           _cset(:autoscaling_expand_alarm_name_prefix, "alarm-expand-")
           _cset(:autoscaling_shrink_alarm_name_prefix, "alarm-shrink-")
           _cset(:autoscaling_expand_alarm_name) { "#{autoscaling_expand_alarm_name_prefix}#{autoscaling_application}" }
@@ -247,7 +265,7 @@ module Capistrano
               else
                 logger.debug("Creating ELB instance: #{autoscaling_elb_instance_name}")
                 set(:autoscaling_elb_instance, autoscling_elb_client.load_balancers.create(
-                  autoscaling_elb_instance_name, autoscaling_elb_instance_options.merge))
+                  autoscaling_elb_instance_name, autoscaling_elb_instance_options))
                 sleep(autoscaling_wait_interval) unless autoscaling_elb_instance.exists?
                 logger.debug("Created ELB instance: #{autoscaling_elb_instance.name}")
                 logger.info("You must setup EC2 instance(s) behind the ELB manually: #{autoscaling_elb_instance_name}")
@@ -282,8 +300,7 @@ module Capistrano
                 logger.debug("Creating AMI: #{autoscaling_image_name}")
                 run("sync; sync; sync") # force flushing to disk
                 set(:autoscaling_image, autoscaling_ec2_client.images.create(
-                  autoscaling_image_options.merge(:name => autoscaling_image_name,
-                                                  :instance_id => autoscaling_image_instance.id)))
+                  autoscaling_image_options.merge(:name => autoscaling_image_name, :instance_id => autoscaling_image_instance.id)))
                 sleep(autoscaling_wait_interval) until autoscaling_image.exists?
                 logger.debug("Created AMI: #{autoscaling_image.name} (#{autoscaling_image.id})")
                 [["Name", {:value => autoscaling_image_name}], [autoscaling_image_tag_name]].each do |tag_name, tag_options|
