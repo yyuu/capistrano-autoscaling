@@ -89,7 +89,7 @@ module Capistrano
           _cset(:autoscaling_keep_images, 2)
           _cset(:autoscaling_instance_type, "t1.micro")
           _cset(:autoscaling_security_groups, %w(default))
-          _cset(:autoscaling_min_size, 1),
+          _cset(:autoscaling_min_size, 1)
           _cset(:autoscaling_max_size) { autoscaling_min_size }
 
 ## behaviour
