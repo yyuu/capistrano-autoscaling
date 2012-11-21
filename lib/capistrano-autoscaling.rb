@@ -127,13 +127,23 @@ module Capistrano
               :listeners => autoscaling_elb_listeners,
             }.merge(fetch(:autoscaling_elb_instance_extra_options, {}))
           }
+          _cset(:autoscaling_elb_health_check_target_path, "/")
+          _cset(:autoscaling_elb_health_check_target) {
+            autoscaling_elb_listeners.map { |listener|
+              if /^https?$/i =~ listener[:instance_protocol]
+                "#{listener[:instance_protocol].to_s.upcase}:#{listener[:instance_port]}#{autoscaling_elb_health_check_target_path}"
+              else
+                "#{listener[:instance_protocol].to_s.upcase}:#{listener[:instance_port]}"
+              end
+            }.first
+          }
           _cset(:autoscaling_elb_health_check_options) {
             {
-              :healthy_threshold => autoscaling_elb_healthcheck_healthy_threshold.to_i,
-              :unhealthy_threshold => autoscaling_elb_healthcheck_unhealthy_threshold.to_i,
-              :interval => autoscaling_elb_healthcheck_interval.to_i,
-              :timeout => autoscaling_elb_healthcheck_timeout.to_i,
-              :target => autoscaling_elb_healthcheck_target,
+              :healthy_threshold => fetch(:autoscaling_elb_healthy_threshold, 10).to_i,
+              :unhealthy_threshold => fetch(:autoscaling_elb_unhealthy_threshold, 2).to_i,
+              :interval => fetch(:autoscaling_elb_health_check_interval, 30).to_i,
+              :timeout => fetch(:autoscaling_elb_health_check_timeout, 5).to_i,
+              :target => autoscaling_elb_health_check_target,
             }.merge(fetch(:autoscaling_elb_health_check_extra_options, {}))
           }
 
