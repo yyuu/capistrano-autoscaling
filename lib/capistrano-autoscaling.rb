@@ -519,7 +519,7 @@ module Capistrano
                     :start_time => action.start_time,
                   }
                 },
-                :suspended_processes => autoscaling_group.suspended_processes,
+                :suspended_processes => autoscaling_group.suspended_processes.to_hash,
               }.to_yaml)
             end
           }
