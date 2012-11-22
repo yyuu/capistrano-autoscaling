@@ -315,7 +315,11 @@ module Capistrano
                 logger.debug("Created AMI: #{autoscaling_image.name} (#{autoscaling_image.id})")
                 [["Name", {:value => autoscaling_image_name}], [autoscaling_image_tag_name]].each do |tag_name, tag_options|
                   begin
-                    autoscaling_image.add_tag(tag_name, tag_options)
+                    if tag_options
+                      autoscaling_image.add_tag(tag_name, tag_options)
+                    else
+                      autoscaling_image.add_tag(tag_name)
+                    end
                   rescue AWS::EC2::Errors::InvalidAMIID::NotFound => error
                     logger.info("[ERROR] " + error.inspect)
                     sleep(autoscaling_wait_interval)
@@ -335,7 +339,7 @@ module Capistrano
               else
                 logger.debug("Creating LaunchConfiguration: #{autoscaling_launch_configuration_name} (#{autoscaling_image.id})")
                 set(:autoscaling_launch_configuration, autoscaling_autoscaling_client.launch_configurations.create(
-                  autoscaling_launch_configuration_name, autoscaling_image, autoscaling_launch_configuration_instance_type,
+                  autoscaling_launch_configuration_name, autoscaling_image.id, autoscaling_launch_configuration_instance_type,
                   autoscaling_launch_configuration_options))
                 sleep(autoscaling_wait_interval) unless autoscaling_launch_configuration.exists?
                 logger.debug("Created LaunchConfiguration: #{autoscaling_launch_configuration.name} (#{autoscaling_launch_configuration.image_id})")
