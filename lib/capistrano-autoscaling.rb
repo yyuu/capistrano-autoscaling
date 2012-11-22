@@ -468,12 +468,58 @@ module Capistrano
           desc("Show AutoScaling status.")
           task(:status, :roles => :app, :except => { :no_release => true }) {
             if autoscaling_group and autoscaling_group.exists?
-              logger.info({
+              STDOUT.puts({
+                :availability_zone_names => autoscaling_group.availability_zone_names.to_a,
+                :desired_capacity => autoscaling_group.desired_capacity,
+                :launch_configuration => {
+                  :iam_instance_profile => autoscaling_group.launch_configuration.iam_instance_profile,
+                  :image => {
+                    :id => autoscaling_group.launch_configuration.image.id,
+                    :name => autoscaling_group.launch_configuration.image.name,
+                    :state => autoscaling_group.launch_configuration.image.state,
+                  },
+                  :instance_type => autoscaling_group.launch_configuration.instance_type,
+                  :name => autoscaling_group.launch_configuration.name,
+                },
+                :load_balancers => autoscaling_group.load_balancers.to_a.map { |lb|
+                  {
+                    :availability_zone_names => lb.availability_zone_names.to_a,
+                    :dns_name => lb.dns_name,
+                    :instances => lb.instances.map { |i|
+                      {
+                        :dns_name => i.dns_name,
+                        :id => i.id,
+                        :private_dns_name => i.private_dns_name,
+                        :status => i.status,
+                      }
+                    },
+                    :name => lb.name,
+                  }
+                },
+                :max_size => autoscaling_group.max_size,
+                :min_size => autoscaling_group.min_size,
+                :name => autoscaling_group.name,
+                :scaling_policies => autoscaling_group.scaling_policies.map { |policy|
+                  {
+                    :adjustment_type => policy.adjustment_type,
+                    :alarms => policy.alarms.to_hash.keys,
+                    :cooldown => policy.cooldown,
+                    :name => policy.name,
+                    :scaling_adjustment => policy.scaling_adjustment,
+                  }
+                },
+                :scheduled_actions => autoscaling_group.scheduled_actions.map { |action|
+                  {
+                    :desired_capacity => action.desired_capacity,
+                    :end_time => action.end_time,
+                    :max_size => action.max_size,
+                    :min_size => action.min_size,
+                    :name => action.name,
+                    :start_time => action.start_time,
+                  }
+                },
                 :suspended_processes => autoscaling_group.suspended_processes,
-                :ec2_instances => autoscaling_ec2_instances.map { |instance| instance.dns_name },
               }.to_yaml)
-            else
-              abort("AutoScalingGroup is not ready: #{autoscaling_group_name}")
             end
           }
 
