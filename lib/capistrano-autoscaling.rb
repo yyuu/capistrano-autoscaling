@@ -475,53 +475,53 @@ module Capistrano
           task(:status, :roles => :app, :except => { :no_release => true }) {
             if autoscaling_group and autoscaling_group.exists?
               STDOUT.puts({
+                :name => autoscaling_group.name,
                 :availability_zone_names => autoscaling_group.availability_zone_names.to_a,
                 :desired_capacity => autoscaling_group.desired_capacity,
+                :max_size => autoscaling_group.max_size,
+                :min_size => autoscaling_group.min_size,
                 :launch_configuration => {
+                  :name => autoscaling_group.launch_configuration.name,
                   :iam_instance_profile => autoscaling_group.launch_configuration.iam_instance_profile,
+                  :instance_type => autoscaling_group.launch_configuration.instance_type,
+                  :security_groups => autoscaling_group.launch_configuration.security_groups.map { |sg| sg.name },
                   :image => {
                     :id => autoscaling_group.launch_configuration.image.id,
                     :name => autoscaling_group.launch_configuration.image.name,
                     :state => autoscaling_group.launch_configuration.image.state,
                   },
-                  :instance_type => autoscaling_group.launch_configuration.instance_type,
-                  :name => autoscaling_group.launch_configuration.name,
-                  :security_groups => autoscaling_group.launch_configuration.security_groups.map { |sg| sg.name },
                 },
                 :load_balancers => autoscaling_group.load_balancers.to_a.map { |lb|
                   {
+                    :name => lb.name,
                     :availability_zone_names => lb.availability_zone_names.to_a,
                     :dns_name => lb.dns_name,
                     :instances => lb.instances.map { |i|
                       {
-                        :dns_name => i.dns_name,
                         :id => i.id,
+                        :dns_name => i.dns_name,
                         :private_dns_name => i.private_dns_name,
                         :status => i.status,
                       }
                     },
-                    :name => lb.name,
                   }
                 },
-                :max_size => autoscaling_group.max_size,
-                :min_size => autoscaling_group.min_size,
-                :name => autoscaling_group.name,
                 :scaling_policies => autoscaling_group.scaling_policies.map { |policy|
                   {
+                    :name => policy.name,
                     :adjustment_type => policy.adjustment_type,
                     :alarms => policy.alarms.to_hash.keys,
                     :cooldown => policy.cooldown,
-                    :name => policy.name,
                     :scaling_adjustment => policy.scaling_adjustment,
                   }
                 },
                 :scheduled_actions => autoscaling_group.scheduled_actions.map { |action|
                   {
+                    :name => action.name,
                     :desired_capacity => action.desired_capacity,
                     :end_time => action.end_time,
                     :max_size => action.max_size,
                     :min_size => action.min_size,
-                    :name => action.name,
                     :start_time => action.start_time,
                   }
                 },
