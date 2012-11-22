@@ -77,7 +77,7 @@ module Capistrano
           _cset(:autoscaling_autoscaling_client) { AWS::AutoScaling.new(fetch(:autoscaling_autoscaling_aws_options, autoscaling_aws_options)) }
           _cset(:autoscaling_cloudwatch_client) { AWS::CloudWatch.new(fetch(:autoscaling_cloudwatch_options, autoscaling_aws_options)) }
           _cset(:autoscaling_ec2_client) { AWS::EC2.new(fetch(:autoscaling_ec2_options, autoscaling_aws_options)) }
-          _cset(:autoscaling_elb_client) { AWS::EC2.new(fetch(:autoscaling_elb_options, autoscaling_aws_options)) }
+          _cset(:autoscaling_elb_client) { AWS::ELB.new(fetch(:autoscaling_elb_options, autoscaling_aws_options)) }
 
           def autoscaling_name_mangling(s)
             s.to_s.gsub(/[^0-9A-Za-z]/, "-")
