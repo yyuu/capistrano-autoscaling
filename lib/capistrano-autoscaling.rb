@@ -480,6 +480,7 @@ module Capistrano
                   },
                   :instance_type => autoscaling_group.launch_configuration.instance_type,
                   :name => autoscaling_group.launch_configuration.name,
+                  :security_groups => autoscaling_group.launch_configuration.security_groups.map { |sg| sg.name },
                 },
                 :load_balancers => autoscaling_group.load_balancers.to_a.map { |lb|
                   {
