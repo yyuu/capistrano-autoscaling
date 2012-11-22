@@ -121,9 +121,10 @@ module Capistrano
               },
             ]
           }
+          _cset(:autoscaling_elb_availability_zones) { autoscaling_availability_zones }
           _cset(:autoscaling_elb_instance_options) {
             {
-              :availability_zones => fetch(:autoscaling_elb_availability_zones, autoscaling_availability_zones),
+              :availability_zones => autoscaling_elb_availability_zones,
               :listeners => autoscaling_elb_listeners,
             }.merge(fetch(:autoscaling_elb_instance_extra_options, {}))
           }
@@ -269,6 +270,7 @@ module Capistrano
             if autoscaling_create_elb
               if autoscaling_elb_instance and autoscaling_elb_instance.exists?
                 logger.debug("Found ELB: #{autoscaling_elb_instance.name}")
+                autoscaling_elb_instance.availability_zones.enable(*autoscaling_elb_availability_zones)
                 autoscaling_elb_listeners.each do |listener|
                   autoscaling_elb_instance.listeners.create(listener)
                 end
