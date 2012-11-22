@@ -526,7 +526,24 @@ module Capistrano
 
           desc("Show AutoScaling history.")
           task(:history, :roles => :app, :except => { :no_release => true }) {
-            abort("FIXME: Not yet implemented.")
+            if autoscaling_group and autoscaling_group.exists?
+              autoscaling_group.scaling_policies.each do |policy|
+                policy.alarms.each do |alarm_name, alarm_arn|
+                  alarm = autoscaling_cloudwatch_client.alarms[alarm_name]
+                  start_date = Time.now - fetch(:autoscaling_history_days, 3) * 86400
+                  history_items = alarm.history_items.with_start_date(start_date)
+
+                  STDOUT.puts("--")
+                  STDOUT.puts("Alarm: #{alarm_name} (ScalingPolicy: #{policy.name})")
+                  history_items.each do |hi|
+                    STDOUT.puts("#{hi.timestamp}: #{hi.type}: #{hi.summary}")
+                  end
+                end
+              end
+            else
+              abort("AutoScalingGroup is not ready: #{autoscaling_group_name}")
+            end
+
           }
 
           desc("Delete old AMIs.")
