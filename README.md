@@ -38,6 +38,9 @@ To enable this recipe, add following in your `config/deploy.rb`.
     set(:autoscaling_max_size, 10)
     after "deploy:setup", "autoscaling:setup"
     after "deploy", "autoscaling:update"
+    after "deploy:cold", "autoscaling:update"
+    after "deploy:rollback", "autoscaling:update"
+    after "autoscaling:update", "autoscaling:cleanup"
 
 TODO: Write usage instructions here
 
