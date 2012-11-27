@@ -161,7 +161,8 @@ module Capistrano
           _cset(:autoscaling_ec2_instance_private_dns_names) { autoscaling_ec2_instances.map { |instance| instance.private_dns_name } }
 
 ## AMI
-          _cset(:autoscaling_image_name) { "#{autoscaling_ec2_instance_name}/#{autoscaling_timestamp}" }
+          _cset(:autoscaling_image_name_prefix) { "#{autoscaling_application}/" }
+          _cset(:autoscaling_image_name) { "#{autoscaling_image_name_prefix}#{autoscaling_timestamp}" }
           _cset(:autoscaling_image_instance) {
             if 0 < autoscaling_ec2_instances.length
               autoscaling_ec2_instances.reject { |instance| instance.root_device_type != :ebs }.last
@@ -174,10 +175,10 @@ module Capistrano
           }
           _cset(:autoscaling_image_tag_name) { autoscaling_application }
           _cset(:autoscaling_image) {
-            autoscaling_ec2_client.images.with_owner("self").tagged("Name").tagged_values(autoscaling_image_name).to_a.first
+            autoscaling_ec2_client.images.with_owner("self").filter("name", autoscaling_image_name).to_a.first
           }
           _cset(:autoscaling_images) {
-            autoscaling_ec2_client.images.with_owner("self").tagged(autoscaling_image_tag_name).reject { |image| image.state != :available }
+            autoscaling_ec2_client.images.with_owner("self").filter("name", "#{autoscaling_image_name_prefix}*").to_a.first
           }
 
 ## LaunchConfiguration
