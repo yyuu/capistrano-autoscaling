@@ -178,7 +178,7 @@ module Capistrano
             autoscaling_ec2_client.images.with_owner("self").filter("name", autoscaling_image_name).to_a.first
           }
           _cset(:autoscaling_images) {
-            autoscaling_ec2_client.images.with_owner("self").filter("name", "#{autoscaling_image_name_prefix}*").to_a.first
+            autoscaling_ec2_client.images.with_owner("self").filter("name", "#{autoscaling_image_name_prefix}*").to_a
           }
 
 ## LaunchConfiguration
