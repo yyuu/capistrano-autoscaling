@@ -554,9 +554,10 @@ module Capistrano
 
           desc("Delete old AMIs.")
           task(:cleanup, :roles => :app, :except => { :no_release => true }) {
-            images = autoscaling_images.sort { |x, y| x.name <=> y.name }.reject { |image|
-              autoscaling_group.launch_configuration.image_id == image.id
-            }
+            images = autoscaling_images.sort { |x, y| x.name <=> y.name }
+            if autoscaling_group and autoscaling_group.exists?
+              images = images.reject { |image| autoscaling_group.launch_configuration.image_id == image.id }
+            end
             (images - images.last(autoscaling_keep_images-1)).each do |image|
               if autoscaling_create_image and ( image and image.exists? )
                 snapshots = image.block_device_mappings.map { |device, block_device| block_device.snapshot_id }
