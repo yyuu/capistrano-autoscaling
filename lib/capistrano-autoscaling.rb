@@ -112,13 +112,15 @@ module Capistrano
           _cset(:autoscaling_elb_instance_name_prefix, "elb-")
           _cset(:autoscaling_elb_instance_name) { "#{autoscaling_elb_instance_name_prefix}#{autoscaling_application}" }
           _cset(:autoscaling_elb_instance) { autoscaling_elb_client.load_balancers[autoscaling_elb_instance_name] }
+          _cset(:autoscaling_elb_port, 80)
+          _cset(:autoscaling_elb_protocol, :http)
           _cset(:autoscaling_elb_listeners) {
             [
               {
-                :port => fetch(:autoscaling_elb_port, 80),
-                :protocol => fetch(:autoscaling_elb_protocol, :http),
-                :instance_port => fetch(:autoscaling_elb_instance_port, 80),
-                :instance_protocol => fetch(:autoscaling_elb_instance_protocol, :http),
+                :port => autoscaling_elb_port,
+                :protocol => autoscaling_elb_protocol,
+                :instance_port => fetch(:autoscaling_elb_instance_port, autoscaling_elb_port),
+                :instance_protocol => fetch(:autoscaling_elb_instance_protocol, autoscaling_elb_protocol),
               },
             ]
           }
