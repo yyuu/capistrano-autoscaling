@@ -87,6 +87,7 @@ module Capistrano
           _cset(:autoscaling_application) { autoscaling_name_mangling(application) }
           _cset(:autoscaling_timestamp) { Time.now.strftime("%Y%m%d%H%M%S") }
           _cset(:autoscaling_availability_zones) { autoscaling_ec2_client.availability_zones.to_a.map { |az| az.name } }
+          _cset(:autoscaling_subnets, nil) # VPC only
           _cset(:autoscaling_wait_interval, 1.0)
           _cset(:autoscaling_keep_images, 2)
           _cset(:autoscaling_instance_type, "t1.micro")
@@ -122,11 +123,23 @@ module Capistrano
             ]
           }
           _cset(:autoscaling_elb_availability_zones) { autoscaling_availability_zones }
+          _cset(:autoscaling_elb_subnets) { autoscaling_subnets } # VPC only
+          _cset(:autoscaling_elb_security_groups) { autoscaling_security_groups } # VPC only
+          _cset(:autoscaling_elb_scheme, "internal") # VPC only
           _cset(:autoscaling_elb_instance_options) {
-            {
-              :availability_zones => autoscaling_elb_availability_zones,
+            options = {
               :listeners => autoscaling_elb_listeners,
-            }.merge(fetch(:autoscaling_elb_instance_extra_options, {}))
+            }
+            if autoscaling_elb_subnets and not autoscaling_elb_subnets.empty?
+              # VPC
+              options[:subnets] = autoscaling_elb_subnets
+              options[:security_groups] = autoscaling_elb_security_groups
+              options[:scheme] = autoscaling_elb_scheme
+            else
+              # non-VPC
+              options[:availability_zones] = autoscaling_elb_availability_zones
+            end
+            options.merge(fetch(:autoscaling_elb_instance_extra_options, {}))
           }
           _cset(:autoscaling_elb_health_check_target_path, "/")
           _cset(:autoscaling_elb_health_check_target) {
@@ -188,21 +201,31 @@ module Capistrano
           _cset(:autoscaling_launch_configuration_name_prefix, "lc-")
           _cset(:autoscaling_launch_configuration_name) { "#{autoscaling_launch_configuration_name_prefix}#{autoscaling_image_name}" }
           _cset(:autoscaling_launch_configuration_instance_type) { autoscaling_instance_type }
+          _cset(:autoscaling_launch_configuration_security_groups) { autoscaling_security_groups }
           _cset(:autoscaling_launch_configuration_options) {
             {
-              :security_groups => fetch(:autoscaling_launch_configuration_security_groups, autoscaling_security_groups),
+              :security_groups => autoscaling_launch_configuration_security_groups,
             }.merge(fetch(:autoscaling_launch_configuration_extra_options, {}))
           }
 
 ## AutoScalingGroup
           _cset(:autoscaling_group_name_prefix, "asg-")
           _cset(:autoscaling_group_name) { "#{autoscaling_group_name_prefix}#{autoscaling_application}" }
+          _cset(:autoscaling_group_availability_zones) { autoscaling_availability_zones }
+          _cset(:autoscaling_group_subnets) { autoscaling_subnets } # VPC only
           _cset(:autoscaling_group_options) {
-            {
-              :availability_zones => fetch(:autoscaling_group_availability_zones, autoscaling_availability_zones),
+            options = {
               :min_size => fetch(:autoscaling_group_min_size, autoscaling_min_size),
               :max_size => fetch(:autoscaling_group_max_size, autoscaling_max_size),
-            }.merge(fetch(:autoscaling_group_extra_options, {}))
+            }
+            if autoscaling_group_subnets and not autoscaling_group_subnets.empty?
+              # VPC
+              options[:subnets] = autoscaling_group_subnets
+            else
+              # non-VPC
+              options[:availability_zones] = autoscaling_group_availability_zones
+            end
+            options.merge(fetch(:autoscaling_group_extra_options, {}))
           }
           _cset(:autoscaling_group) { autoscaling_autoscaling_client.groups[autoscaling_group_name] }
 
@@ -271,7 +294,9 @@ module Capistrano
             if autoscaling_create_elb
               if autoscaling_elb_instance and autoscaling_elb_instance.exists?
                 logger.debug("Found ELB: #{autoscaling_elb_instance.name}")
-                autoscaling_elb_instance.availability_zones.enable(*autoscaling_elb_availability_zones)
+                if autoscaling_elb_instance_options.has_key?(:availability_zones)
+                  autoscaling_elb_instance.availability_zones.enable(*autoscaling_elb_instance_options[:availability_zones])
+                end
                 autoscaling_elb_listeners.each do |listener|
                   autoscaling_elb_instance.listeners.create(listener)
                 end
