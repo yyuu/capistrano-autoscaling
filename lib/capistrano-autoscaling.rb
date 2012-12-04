@@ -331,6 +331,7 @@ module Capistrano
             update_launch_configuration
             update_group
             update_policy
+            update_alarm
             resume
           }
 
