@@ -419,7 +419,7 @@ module Capistrano
 
           task(:destroy_group, :roles => :app, :except => { :no_release => true }) {
             if autoscaling_group and autoscaling_group.exists?
-              if 0 < autoscaling_elb_instance.instances.length
+              if 0 < autoscaling_group.min_size and 0 < autoscaling_group.max_size
                 abort("AutoScalingGroup is not empty.")
               end
               logger.debug("Deleting AutoScalingGroup: #{autoscaling_group.name} (#{autoscaling_group.launch_configuration_name})")
