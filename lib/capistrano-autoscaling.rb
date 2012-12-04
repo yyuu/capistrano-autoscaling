@@ -111,7 +111,7 @@ module Capistrano
 ## ELB
           _cset(:autoscaling_elb_instance_name_prefix, "elb-")
           _cset(:autoscaling_elb_instance_name) { "#{autoscaling_elb_instance_name_prefix}#{autoscaling_application}" }
-          _cset(:autoscaling_elb_instance) { autoscaling_elb_client.load_balancers[autoscaling_elb_instance_name] }
+          _cset(:autoscaling_elb_instance) { autoscaling_elb_client.load_balancers[autoscaling_elb_instance_name] rescue nil }
           _cset(:autoscaling_elb_port, 80)
           _cset(:autoscaling_elb_protocol, :http)
           _cset(:autoscaling_elb_listeners) {
@@ -198,7 +198,7 @@ module Capistrano
 
 ## LaunchConfiguration
           _cset(:autoscaling_launch_configuration) {
-            autoscaling_autoscaling_client.launch_configurations[autoscaling_launch_configuration_name]
+            autoscaling_autoscaling_client.launch_configurations[autoscaling_launch_configuration_name] rescue nil
           }
           _cset(:autoscaling_launch_configuration_name_prefix, "lc-")
           _cset(:autoscaling_launch_configuration_name) { "#{autoscaling_launch_configuration_name_prefix}#{autoscaling_image_name}" }
@@ -229,7 +229,7 @@ module Capistrano
             end
             options.merge(fetch(:autoscaling_group_extra_options, {}))
           }
-          _cset(:autoscaling_group) { autoscaling_autoscaling_client.groups[autoscaling_group_name] }
+          _cset(:autoscaling_group) { autoscaling_autoscaling_client.groups[autoscaling_group_name] rescue nil }
 
 ## ScalingPolicy
           _cset(:autoscaling_expand_policy_name_prefix, "expand-")
@@ -250,8 +250,8 @@ module Capistrano
               :type => fetch(:autoscaling_shrink_policy_type, "ChangeInCapacity"),
             }.merge(fetch(:autoscaling_shrink_policy_extra_options, {}))
           }
-          _cset(:autoscaling_expand_policy) { autoscaling_group.scaling_policies[autoscaling_expand_policy_name] }
-          _cset(:autoscaling_shrink_policy) { autoscaling_group.scaling_policies[autoscaling_shrink_policy_name] }
+          _cset(:autoscaling_expand_policy) { autoscaling_group.scaling_policies[autoscaling_expand_policy_name] rescue nil }
+          _cset(:autoscaling_shrink_policy) { autoscaling_group.scaling_policies[autoscaling_shrink_policy_name] rescue nil }
 
 ## Alarm
           _cset(:autoscaling_expand_alarm_options) {
@@ -486,7 +486,7 @@ module Capistrano
           task(:update_alarm, :roles => :app, :except => { :no_release => true }) {
             if autoscaling_create_alarm
               autoscaling_expand_alarm_definitions.each do |alarm_name, alarm_options|
-                alarm = autoscaling_cloudwatch_client.alarms[alarm_name]
+                alarm = ( autoscaling_cloudwatch_client.alarms[alarm_name] rescue nil )
                 if alarm and alarm.exists?
                   logger.debug("Found Alarm for expansion: #{alarm.name}")
                 else
@@ -504,7 +504,7 @@ module Capistrano
 
             if autoscaling_create_alarm
               autoscaling_shrink_alarm_definitions.each do |alarm_name, alarm_options|
-                alarm = autoscaling_cloudwatch_client.alarms[alarm_name]
+                alarm = ( autoscaling_cloudwatch_client.alarms[alarm_name] rescue nil )
                 if alarm and alarm.exists?
                   logger.debug("Found Alarm for shrinking: #{alarm.name}")
                 else
@@ -523,7 +523,7 @@ module Capistrano
 
           task(:destroy_alarm, :roles => :app, :except => { :no_release => true }) {
             autoscaling_expand_alarm_definitions.each do |alarm_name, alarm_options|
-              alarm = autoscaling_cloudwatch_client.alarms[alarm_name]
+              alarm = ( autoscaling_cloudwatch_client.alarms[alarm_name] rescue nil)
               if alarm and alarm.exists?
                 logger.debug("Deleting Alarm for expansion: #{alarm.name}")
                 alarm.delete()
@@ -532,7 +532,7 @@ module Capistrano
             end
 
             autoscaling_shrink_alarm_definitions.each do |alarm_name, alarm_options|
-              alarm = autoscaling_cloudwatch_client.alarms[alarm_name]
+              alarm = ( autoscaling_cloudwatch_client.alarms[alarm_name] rescue nil )
               if alarm and alarm.exists?
                 logger.debug("Deleting Alarm for shrinking: #{alarm.name}")
                 alarm.delete()
@@ -625,14 +625,16 @@ module Capistrano
             if autoscaling_group and autoscaling_group.exists?
               autoscaling_group.scaling_policies.each do |policy|
                 policy.alarms.each do |alarm_name, alarm_arn|
-                  alarm = autoscaling_cloudwatch_client.alarms[alarm_name]
-                  start_date = Time.now - fetch(:autoscaling_history_days, 3) * 86400
-                  history_items = alarm.history_items.with_start_date(start_date)
+                  alarm = ( autoscaling_cloudwatch_client.alarms[alarm_name] rescue nil )
+                  if alarm and alarm.exists?
+                    start_date = Time.now - fetch(:autoscaling_history_days, 3) * 86400
+                    history_items = alarm.history_items.with_start_date(start_date)
 
-                  STDOUT.puts("--")
-                  STDOUT.puts("Alarm: #{alarm_name} (ScalingPolicy: #{policy.name})")
-                  history_items.each do |hi|
-                    STDOUT.puts("#{hi.timestamp}: #{hi.type}: #{hi.summary}")
+                    STDOUT.puts("--")
+                    STDOUT.puts("Alarm: #{alarm_name} (ScalingPolicy: #{policy.name})")
+                    history_items.each do |hi|
+                      STDOUT.puts("#{hi.timestamp}: #{hi.type}: #{hi.summary}")
+                    end
                   end
                 end
               end
