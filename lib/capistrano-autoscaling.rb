@@ -291,10 +291,29 @@ module Capistrano
 
           desc("Setup AutoScaling.")
           task(:setup, :roles => :app, :except => { :no_release => true }) {
-            setup_elb
+            update_elb
           }
 
-          task(:setup_elb, :roles => :app, :except => { :no_release => true }) {
+          desc("Remove AutoScaling settings.")
+          task(:destroy, :roles => :app, :except => { :no_release => true }) {
+            destroy_alarm
+            destroy_policy
+            destroy_group
+            destroy_elb
+          }
+
+          desc("Register current instance for AutoScaling.")
+          task(:update, :roles => :app, :except => { :no_release => true }) {
+            suspend
+            update_image
+            update_launch_configuration
+            update_group
+            update_policy
+            update_alarm
+            resume
+          }
+
+          task(:update_elb, :roles => :app, :except => { :no_release => true }) {
             if autoscaling_create_elb
               if autoscaling_elb_instance and autoscaling_elb_instance.exists?
                 logger.debug("Found ELB: #{autoscaling_elb_instance.name}")
@@ -319,20 +338,15 @@ module Capistrano
             end
           }
 
-          desc("Remove AutoScaling settings.")
-          task(:destroy, :roles => :app, :except => { :no_release => true }) {
-            abort("FIXME: Not yet implemented.")
-          }
-
-          desc("Register current instance for AutoScaling.")
-          task(:update, :roles => :app, :except => { :no_release => true }) {
-            suspend
-            update_image
-            update_launch_configuration
-            update_group
-            update_policy
-            update_alarm
-            resume
+          task(:destroy_elb, :roles => :app, :except => { :no_release => true }) {
+            if autoscaling_elb_instance and autoscaling_elb_instance.exists?
+              if 0 < autoscaling_elb_instance.length
+                abort("ELB is not empty.")
+              end
+              logger.debug("Deleting ELB: #{autoscaling_elb_instance.name}")
+              autoscaling_elb_instance.delete()
+              logger.debug("Deleted ELB: #{autoscaling_elb_instance.name}")
+            end
           }
 
           task(:update_image, :roles => :app, :except => { :no_release => true }) {
@@ -403,6 +417,17 @@ module Capistrano
             end
           }
 
+          task(:destroy_group, :roles => :app, :except => { :no_release => true }) {
+            if autoscaling_group and autoscaling_group.exists?
+              if 0 < autoscaling_elb_instance.instances.length
+                abort("AutoScalingGroup is not empty.")
+              end
+              logger.debug("Deleting AutoScalingGroup: #{autoscaling_group.name} (#{autoscaling_group.launch_configuration_name})")
+              autoscaling_group.delete()
+              logger.debug("Deleted AutoScalingGroup: #{autoscaling_group.name} (#{autoscaling_group.launch_configuration_name})")
+            end
+          }
+
           task(:update_policy, :roles => :app, :except => { :no_release => true }) {
             if autoscaling_create_policy
               if autoscaling_expand_policy and autoscaling_expand_policy.exists?
@@ -430,6 +455,20 @@ module Capistrano
               end
             else
               logger.info("Skip creating ScalingPolicy for shrinking: #{autoscaling_shrink_policy_name}")
+            end
+          }
+
+          task(:destroy_policy, :roles => :app, :except => { :no_release => true }) {
+            if autoscaling_expand_policy and autoscaling_expand_policy.exists?
+              logger.debug("Deleting ScalingPolicy for expansion: #{autoscaling_expand_policy.name}")
+              autoscaling_expand_policy.delete()
+              logger.debug("Deleted ScalingPolicy for expansion: #{autoscaling_expand_policy.name}")
+            end
+
+            if autoscaling_shrink_policy and autoscaling_shrink_policy.exists?
+              logger.debug("Deleting ScalingPolicy for shrinking: #{autoscaling_shrink_policy.name}")
+              autoscaling_shrink_policy.delete()
+              logger.debug("Deleted ScalingPolicy for shrinking: #{autoscaling_shrink_policy.name}")
             end
           }
 
@@ -479,6 +518,26 @@ module Capistrano
               end
             else
               logger.info("Skip creating Alarm for shrinking")
+            end
+          }
+
+          task(:destroy_alarm, :roles => :app, :except => { :no_release => true }) {
+            autoscaling_expand_alarm_definitions.each do |alarm_name, alarm_options|
+              alarm = autoscaling_cloudwatch_client.alarms[alarm_name]
+              if alarm and alarm.exists?
+                logger.debug("Deleting Alarm for expansion: #{alarm.name}")
+                alarm.delete()
+                logger.debug("Deleted Alarm for expansion: #{alarm.name}")
+              end
+            end
+
+            autoscaling_shrink_alarm_definitions.each do |alarm_name, alarm_options|
+              alarm = autoscaling_cloudwatch_client.alarms[alarm_name]
+              if alarm and alarm.exists?
+                logger.debug("Deleting Alarm for shrinking: #{alarm.name}")
+                alarm.delete()
+                logger.debug("Deleted Alarm for shrinking: #{alarm.name}")
+              end
             end
           }
 
