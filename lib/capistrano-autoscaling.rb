@@ -340,7 +340,7 @@ module Capistrano
 
           task(:destroy_elb, :roles => :app, :except => { :no_release => true }) {
             if autoscaling_elb_instance and autoscaling_elb_instance.exists?
-              if 0 < autoscaling_elb_instance.length
+              if 0 < autoscaling_elb_instance.instances.length
                 abort("ELB is not empty.")
               end
               logger.debug("Deleting ELB: #{autoscaling_elb_instance.name}")
