@@ -275,8 +275,8 @@ module Capistrano
               :statistic => fetch(:autoscaling_expand_alarm_evaluation_statistic, "Average"),
               :namespace => fetch(:autoscaling_expand_alarm_namespace, "AWS/EC2"),
               :metric_name => fetch(:autoscaling_expand_alarm_metric_name, "CPUUtilization"),
-              :comparison_operator => fetch(:autoscaling_expand_alarm_comparison_operator, "LessThanThreshold"),
-              :threshold => fetch(:autoscaling_expand_alarm_threshold, 30),
+              :comparison_operator => fetch(:autoscaling_expand_alarm_comparison_operator, "GreaterThanThreshold"),
+              :threshold => fetch(:autoscaling_expand_alarm_threshold, 60),
             },
           }}
           _cset(:autoscaling_shrink_alarm_definitions) {{
