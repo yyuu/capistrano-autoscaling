@@ -325,7 +325,7 @@ module Capistrano
                 end
               else
                 logger.debug("Creating ELB instance: #{autoscaling_elb_instance_name}")
-                set(:autoscaling_elb_instance, autoscling_elb_client.load_balancers.create(
+                set(:autoscaling_elb_instance, autoscaling_elb_client.load_balancers.create(
                   autoscaling_elb_instance_name, autoscaling_elb_instance_options))
                 sleep(autoscaling_wait_interval) unless autoscaling_elb_instance.exists?
                 logger.debug("Created ELB instance: #{autoscaling_elb_instance.name}")
