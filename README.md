@@ -76,8 +76,10 @@ The following options are preserved to manage AutoScaling.
 ### EC2 options
 
  * `:autoscaling_ec2_instances` - The EC2 instances behind ELB.
- * `:autoscaling_ec2_instance_dns_names` - The DNS name of EC2 instances behind ELB.
+ * `:autoscaling_ec2_instance_public_dns_names` - The DNS name of EC2 instances behind ELB.
+ * `:autoscaling_ec2_instance_public_ip_addresses` - The IP address of EC2 instances behind ELB.
  * `:autoscaling_ec2_instance_private_dns_names` - The private DNS name of EC2 instances behind ELB.
+ * `:autoscaling_ec2_instance_private_ip_addresses` - The private IP address of EC2 instances behind ELB.
 
 ### AMI options
 

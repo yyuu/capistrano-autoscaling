@@ -174,6 +174,10 @@ module Capistrano
           }
           _cset(:autoscaling_ec2_instance_dns_names) { autoscaling_ec2_instances.map { |instance| instance.dns_name } }
           _cset(:autoscaling_ec2_instance_private_dns_names) { autoscaling_ec2_instances.map { |instance| instance.private_dns_name } }
+          _cset(:autoscaling_ec2_instance_public_dns_names) { autoscaling_ec2_instances.map { |instance| instance.public_dns_name } }
+          _cset(:autoscaling_ec2_instance_ip_addresses) { autoscaling_ec2_instances.map { |instance| instance.ip_address } }
+          _cset(:autoscaling_ec2_instance_private_ip_addresses) { autoscaling_ec2_instances.map { |instance| instance.private_ip_address } }
+          _cset(:autoscaling_ec2_instance_public_ip_addresses) { autoscaling_ec2_instances.map { |instance| instance.public_ip_address } }
 
 ## AMI
           _cset(:autoscaling_image_name_prefix) { "#{autoscaling_application}/" }
