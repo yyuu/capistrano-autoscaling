@@ -109,7 +109,7 @@ module Capistrano
           _cset(:autoscaling_create_alarm) { autoscaling_create_policy }
 
 ## ELB
-          _cset(:autoscaling_elb_instance_name_prefix, "elb-")
+          _cset(:autoscaling_elb_instance_name_prefix, "")
           _cset(:autoscaling_elb_instance_name) { "#{autoscaling_elb_instance_name_prefix}#{autoscaling_application}" }
           _cset(:autoscaling_elb_instance) { autoscaling_elb_client.load_balancers[autoscaling_elb_instance_name] rescue nil }
           _cset(:autoscaling_elb_port, 80)
@@ -200,7 +200,7 @@ module Capistrano
           _cset(:autoscaling_launch_configuration) {
             autoscaling_autoscaling_client.launch_configurations[autoscaling_launch_configuration_name] rescue nil
           }
-          _cset(:autoscaling_launch_configuration_name_prefix, "lc-")
+          _cset(:autoscaling_launch_configuration_name_prefix, "")
           _cset(:autoscaling_launch_configuration_name) { "#{autoscaling_launch_configuration_name_prefix}#{autoscaling_image_name}" }
           _cset(:autoscaling_launch_configuration_instance_type) { autoscaling_instance_type }
           _cset(:autoscaling_launch_configuration_security_groups) { autoscaling_security_groups }
@@ -211,7 +211,7 @@ module Capistrano
           }
 
 ## AutoScalingGroup
-          _cset(:autoscaling_group_name_prefix, "asg-")
+          _cset(:autoscaling_group_name_prefix, "")
           _cset(:autoscaling_group_name) { "#{autoscaling_group_name_prefix}#{autoscaling_application}" }
           _cset(:autoscaling_group_availability_zones) { autoscaling_availability_zones }
           _cset(:autoscaling_group_subnets) { autoscaling_subnets } # VPC only
