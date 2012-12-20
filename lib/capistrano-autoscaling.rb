@@ -567,61 +567,86 @@ module Capistrano
 
           desc("Show AutoScaling status.")
           task(:status, :roles => :app, :except => { :no_release => true }) {
+            status = {}
+
             if autoscaling_group and autoscaling_group.exists?
-              STDOUT.puts({
-                :name => autoscaling_group.name,
-                :availability_zone_names => autoscaling_group.availability_zone_names.to_a,
-                :desired_capacity => autoscaling_group.desired_capacity,
-                :max_size => autoscaling_group.max_size,
-                :min_size => autoscaling_group.min_size,
-                :launch_configuration => {
-                  :name => autoscaling_group.launch_configuration.name,
-                  :iam_instance_profile => autoscaling_group.launch_configuration.iam_instance_profile,
-                  :instance_type => autoscaling_group.launch_configuration.instance_type,
-                  :security_groups => autoscaling_group.launch_configuration.security_groups.map { |sg| sg.name },
-                  :image => {
-                    :id => autoscaling_group.launch_configuration.image.id,
-                    :name => autoscaling_group.launch_configuration.image.name,
-                    :state => autoscaling_group.launch_configuration.image.state,
-                  },
-                },
-                :load_balancers => autoscaling_group.load_balancers.to_a.map { |lb|
-                  {
-                    :name => lb.name,
-                    :availability_zone_names => lb.availability_zone_names.to_a,
-                    :dns_name => lb.dns_name,
-                    :instances => lb.instances.map { |i|
-                      {
-                        :id => i.id,
-                        :dns_name => i.dns_name,
-                        :private_dns_name => i.private_dns_name,
-                        :status => i.status,
-                      }
-                    },
-                  }
-                },
-                :scaling_policies => autoscaling_group.scaling_policies.map { |policy|
-                  {
-                    :name => policy.name,
-                    :adjustment_type => policy.adjustment_type,
-                    :alarms => policy.alarms.to_hash.keys,
-                    :cooldown => policy.cooldown,
-                    :scaling_adjustment => policy.scaling_adjustment,
-                  }
-                },
-                :scheduled_actions => autoscaling_group.scheduled_actions.map { |action|
-                  {
-                    :name => action.name,
-                    :desired_capacity => action.desired_capacity,
-                    :end_time => action.end_time,
-                    :max_size => action.max_size,
-                    :min_size => action.min_size,
-                    :start_time => action.start_time,
-                  }
-                },
-                :suspended_processes => autoscaling_group.suspended_processes.to_hash,
-              }.to_yaml)
+              status[:name] = autoscaling_group.name
+              status[:availability_zone_names] = autoscaling_group.availability_zone_names.to_a
+              status[:desired_capacity] = autoscaling_group.desired_capacity
+              status[:max_size] = autoscaling_group.max_size
+              status[:min_size] = autoscaling_group.min_size
             end
+
+            launch_configuration = nil
+            if autoscaling_group and autoscaling_group.exists?
+              launch_configuration = autoscaling_gruop.launch_configuration
+            elsif autoscaling_launch_configuration and autoscaling_launch_configuration.exists?
+              launch_configuration = autoscaling_launch_configuration
+            end
+            if launch_configuration
+               status[:launch_configuration] = {
+                :name => launch_configuration.name,
+                :iam_instance_profile => launch_configuration.iam_instance_profile,
+                :instance_type => launch_configuration.instance_type,
+                :security_groups => launch_configuration.security_groups.map { |sg| sg.name },
+                :image => {
+                  :id => launch_configuration.image.id,
+                  :name => launch_configuration.image.name,
+                  :state => launch_configuration.image.state,
+                }
+              }
+           end
+
+            load_balancers = nil
+            if autoscaling_group and autoscaling_group.exists?
+              load_balancers = autoscaling_group.load_balancers.to_a
+            elsif autoscaling_elb_instance and autoscaling_elb_instance.exists?
+              load_balancers = [ autoscaling_elb_instance ]
+            end
+            if load_balancers
+              status[:load_balancers] = load_balancers.map { |lb|
+                {
+                  :name => lb.name,
+                  :availability_zone_names => lb.availability_zone_names.to_a,
+                  :dns_name => lb.dns_name,
+                  :instances => lb.instances.map { |i|
+                    {
+                      :id => i.id,
+                      :private_ip_address => i.private_ip_address,
+                      :private_dns_name => i.private_dns_name,
+                      :public_ip_address => i.public_ip_address,
+                      :public_dns_name => i.public_dns_name,
+                      :status => i.status,
+                    }
+                  },
+                }
+              }
+            end
+
+            if autoscaling_group and autoscaling_group.exists?
+              status[:scaling_policies] = autoscaling_group.scaling_policies.map { |policy|
+                {
+                  :name => policy.name,
+                  :adjustment_type => policy.adjustment_type,
+                  :alarms => policy.alarms.to_hash.keys,
+                  :cooldown => policy.cooldown,
+                  :scaling_adjustment => policy.scaling_adjustment,
+                }
+              }
+              status[:scheduled_actions] = autoscaling_group.scheduled_actions.map { |action|
+                {
+                  :name => action.name,
+                  :desired_capacity => action.desired_capacity,
+                  :end_time => action.end_time,
+                  :max_size => action.max_size,
+                  :min_size => action.min_size,
+                  :start_time => action.start_time,
+                }
+              }
+              status[:suspended_processes] = autoscaling_group.suspended_processes.to_hash
+            end
+
+            STDOUT.puts(status.to_yaml)
           }
 
           desc("Show AutoScaling history.")
