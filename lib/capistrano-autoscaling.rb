@@ -679,6 +679,9 @@ module Capistrano
             if autoscaling_group and autoscaling_group.exists?
               images = images.reject { |image| autoscaling_group.launch_configuration.image_id == image.id }
             end
+            if autoscaling_image and autoscaling_image.exists?
+              images = images.reject { |image| autoscaling_image.id == image.id }
+            end
             (images - images.last(autoscaling_keep_images-1)).each do |image|
               if autoscaling_create_image and ( image and image.exists? )
                 snapshots = image.block_device_mappings.map { |device, block_device| block_device.snapshot_id }
