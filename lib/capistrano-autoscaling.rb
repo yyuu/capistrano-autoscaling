@@ -297,6 +297,12 @@ module Capistrano
           task(:setup, :roles => :app, :except => { :no_release => true }) {
             update_elb
           }
+          _cset(:autoscaling_setup_after_hooks, ["deploy:setup"])
+          on(:start) {
+            [ autoscaling_setup_after_hooks ].flatten.each do |t|
+              after t, "autoscaling:setup" if t
+            end
+          }
 
           desc("Remove AutoScaling settings.")
           task(:destroy, :roles => :app, :except => { :no_release => true }) {
@@ -315,6 +321,12 @@ module Capistrano
             update_policy
             update_alarm
             resume
+          }
+          _cset(:autoscaling_update_after_hooks, ["deploy", "deploy:cold", "deploy:rollback"])
+          on(:start) {
+            [ autoscaling_update_after_hooks ].flatten.each do |t|
+              after t, "autoscaling:update" if t
+            end
           }
 
           task(:update_elb, :roles => :app, :except => { :no_release => true }) {
@@ -714,6 +726,12 @@ module Capistrano
               else
                 logger.info("Skip deleting LaunchConfiguration: #{launch_configuration_name}")
               end
+            end
+          }
+          _cset(:autoscaling_cleanup_after_hooks, ["autoscaling:update"])
+          on(:start) {
+            [ autoscaling_cleanup_after_hooks ].flatten.each do |t|
+              after t, "autoscaling:cleanup" if t
             end
           }
         }
