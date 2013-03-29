@@ -298,7 +298,7 @@ module Capistrano
             update_elb
           }
           _cset(:autoscaling_setup_after_hooks, ["deploy:setup"])
-          on(:start) {
+          on(:load) {
             [ autoscaling_setup_after_hooks ].flatten.each do |t|
               after t, "autoscaling:setup" if t
             end
