@@ -323,7 +323,7 @@ module Capistrano
             resume
           }
           _cset(:autoscaling_update_after_hooks, ["deploy", "deploy:cold", "deploy:rollback"])
-          on(:start) {
+          on(:load) {
             [ autoscaling_update_after_hooks ].flatten.each do |t|
               after t, "autoscaling:update" if t
             end
@@ -729,7 +729,7 @@ module Capistrano
             end
           }
           _cset(:autoscaling_cleanup_after_hooks, ["autoscaling:update"])
-          on(:start) {
+          on(:load) {
             [ autoscaling_cleanup_after_hooks ].flatten.each do |t|
               after t, "autoscaling:cleanup" if t
             end
