@@ -36,11 +36,6 @@ To enable this recipe, add following in your `config/deploy.rb`.
     set(:autoscaling_security_groups, %w(default))
     set(:autoscaling_min_size, 2)
     set(:autoscaling_max_size, 10)
-    after "deploy:setup", "autoscaling:setup"
-    after "deploy", "autoscaling:update"
-    after "deploy:cold", "autoscaling:update"
-    after "deploy:rollback", "autoscaling:update"
-    after "autoscaling:update", "autoscaling:cleanup"
 
 The following options are preserved to manage AutoScaling.
 
