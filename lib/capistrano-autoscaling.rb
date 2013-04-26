@@ -8,55 +8,7 @@ module Capistrano
       configuration.load {
         namespace(:autoscaling) {
 ## AWS
-          _cset(:autoscaling_region, nil)
-          _cset(:autoscaling_autoscaling_endpoint) {
-            case autoscaling_region
-            when "us-east-1"      then "autoscaling.us-east-1.amazonaws.com"
-            when "us-west-1"      then "autoscaling.us-west-1.amazonaws.com"
-            when "us-west-2"      then "autoscaling.us-west-2.amazonaws.com"
-            when "sa-east-1"      then "autoscaling.sa-east-1.amazonaws.com"
-            when "eu-west-1"      then "autoscaling.eu-west-1.amazonaws.com"
-            when "ap-southeast-1" then "autoscaling.ap-southeast-1.amazonaws.com"
-            when "ap-southeast-2" then "autoscaling.ap-southeast-2.amazonaws.com"
-            when "ap-northeast-1" then "autoscaling.ap-northeast-1.amazonaws.com"
-            end
-          }
-          _cset(:autoscaling_cloudwatch_endpoint) {
-            case autoscaling_region
-            when "us-east-1"      then "monitoring.us-east-1.amazonaws.com"
-            when "us-west-1"      then "monitoring.us-west-1.amazonaws.com"
-            when "us-west-2"      then "monitoring.us-west-2.amazonaws.com"
-            when "sa-east-1"      then "monitoring.sa-east-1.amazonaws.com"
-            when "eu-west-1"      then "monitoring.eu-west-1.amazonaws.com"
-            when "ap-southeast-1" then "monitoring.ap-southeast-1.amazonaws.com"
-            when "ap-southeast-2" then "monitoring.ap-southeast-2.amazonaws.com"
-            when "ap-northeast-1" then "monitoring.ap-northeast-1.amazonaws.com"
-            end
-          }
-          _cset(:autoscaling_ec2_endpoint) {
-            case autoscaling_region
-            when "us-east-1"      then "ec2.us-east-1.amazonaws.com"
-            when "us-west-1"      then "ec2.us-west-1.amazonaws.com"
-            when "us-west-2"      then "ec2.us-west-2.amazonaws.com"
-            when "sa-east-1"      then "ec2.sa-east-1.amazonaws.com"
-            when "eu-west-1"      then "ec2.eu-west-1.amazonaws.com"
-            when "ap-southeast-1" then "ec2.ap-southeast-1.amazonaws.com"
-            when "ap-southeast-2" then "ec2.ap-southeast-2.amazonaws.com"
-            when "ap-northeast-1" then "ec2.ap-northeast-1.amazonaws.com"
-            end
-          }
-          _cset(:autoscaling_elb_endpoint) {
-            case autoscaling_region
-            when "us-east-1"      then "elasticloadbalancing.us-east-1.amazonaws.com"
-            when "us-west-1"      then "elasticloadbalancing.us-west-1.amazonaws.com"
-            when "us-west-2"      then "elasticloadbalancing.us-west-2.amazonaws.com"
-            when "sa-east-1"      then "elasticloadbalancing.sa-east-1.amazonaws.com"
-            when "eu-west-1"      then "elasticloadbalancing.eu-west-1.amazonaws.com"
-            when "ap-southeast-1" then "elasticloadbalancing.ap-southeast-1.amazonaws.com"
-            when "ap-southeast-2" then "elasticloadbalancing.ap-southeast-2.amazonaws.com"
-            when "ap-northeast-1" then "elasticloadbalancing.ap-northeast-1.amazonaws.com"
-            end
-          }
+          _cset(:autoscaling_region, "us-east-1")
           _cset(:autoscaling_access_key_id) {
             fetch(:aws_access_key_id, ENV["AWS_ACCESS_KEY_ID"]) or abort("AWS_ACCESS_KEY_ID is not set")
           }
@@ -64,20 +16,18 @@ module Capistrano
             fetch(:aws_secret_access_key, ENV["AWS_SECRET_ACCESS_KEY"]) or abort("AWS_SECRET_ACCESS_KEY is not set")
           }
           _cset(:autoscaling_aws_options) {
-            {
+            options = {
               :access_key_id => autoscaling_access_key_id,
               :secret_access_key => autoscaling_secret_access_key,
               :log_level => fetch(:autoscaling_log_level, :debug),
-              :auto_scaling_endpoint => autoscaling_autoscaling_endpoint,
-              :cloud_watch_endpoint => autoscaling_cloudwatch_endpoint,
-              :ec2_endpoint => autoscaling_ec2_endpoint,
-              :elb_endpoint => autoscaling_elb_endpoint,
+              :region => autoscaling_region,
             }.merge(fetch(:autoscaling_aws_extra_options, {}))
           }
-          _cset(:autoscaling_autoscaling_client) { AWS::AutoScaling.new(fetch(:autoscaling_autoscaling_aws_options, autoscaling_aws_options)) }
-          _cset(:autoscaling_cloudwatch_client) { AWS::CloudWatch.new(fetch(:autoscaling_cloudwatch_options, autoscaling_aws_options)) }
-          _cset(:autoscaling_ec2_client) { AWS::EC2.new(fetch(:autoscaling_ec2_options, autoscaling_aws_options)) }
-          _cset(:autoscaling_elb_client) { AWS::ELB.new(fetch(:autoscaling_elb_options, autoscaling_aws_options)) }
+          _cset(:autoscaling_aws) { AWS.tap { |aws| aws.config(autoscaling_aws_options) } }
+          _cset(:autoscaling_autoscaling_client) { autoscaling_aws.auto_scaling(fetch(:autoscaling_autoscaling_aws_options, {})) }
+          _cset(:autoscaling_cloudwatch_client) { autoscaling_aws.cloud_watch(fetch(:autoscaling_cloudwatch_options,{})) }
+          _cset(:autoscaling_ec2_client) { autoscaling_aws.ec2(fetch(:autoscaling_ec2_options, {})) }
+          _cset(:autoscaling_elb_client) { autoscaling_aws.elb(fetch(:autoscaling_elb_options, {})) }
 
           def autoscaling_name_mangling(s)
             s.to_s.gsub(/[^0-9A-Za-z]/, "-")
