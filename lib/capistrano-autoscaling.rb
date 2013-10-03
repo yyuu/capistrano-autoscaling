@@ -192,16 +192,16 @@ module Capistrano
           _cset(:autoscaling_shrink_policy_name) { "#{autoscaling_shrink_policy_name_prefix}#{autoscaling_application}" }
           _cset(:autoscaling_expand_policy_options) {
             {
-              :adjustment => fetch(:autoscaling_expand_policy_adjustment, 1),
+              :scaling_adjustment => fetch(:autoscaling_expand_policy_adjustment, 1),
               :cooldown => fetch(:autoscaling_expand_policy_cooldown, 300),
-              :type => fetch(:autoscaling_expand_policy_type, "ChangeInCapacity"),
+              :adjustment_type => fetch(:autoscaling_expand_policy_type, "ChangeInCapacity"),
             }.merge(fetch(:autoscaling_expand_policy_extra_options, {}))
           }
           _cset(:autoscaling_shrink_policy_options) {
             {
-              :adjustment => fetch(:autoscaling_shrink_policy_adjustment, -1),
+              :scaling_adjustment => fetch(:autoscaling_shrink_policy_adjustment, -1),
               :cooldown => fetch(:autoscaling_shrink_policy_cooldown, 300),
-              :type => fetch(:autoscaling_shrink_policy_type, "ChangeInCapacity"),
+              :adjustment_type => fetch(:autoscaling_shrink_policy_type, "ChangeInCapacity"),
             }.merge(fetch(:autoscaling_shrink_policy_extra_options, {}))
           }
           _cset(:autoscaling_expand_policy) { autoscaling_group.scaling_policies[autoscaling_expand_policy_name] rescue nil }
