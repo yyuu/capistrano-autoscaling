@@ -254,6 +254,21 @@ module Capistrano
             end
           }
 
+          desc("Add the EC2 Instance used as the AMI prototype to the load balancer from :app")
+          task(:add_proto_instance, :roles => :app, :except => { :no_release => true }) {
+            # Find the host name for :app and get its instance
+            ec2_dns = (find_servers_for_task(current_task)[0]).host
+            app_instance = autoscaling_aws.ec2.instances.find { |instance| instance.public_dns_name == ec2_dns }
+
+            autoscaling_elb_instance.instances.register app_instance            
+          }
+          _cset(:autoscaling_add_proto_instance_after_hooks, ["autoscaling:setup"])
+          on(:load) {
+            [ autoscaling_add_proto_instance_after_hooks ].flatten.each do |t|
+              after t, "autoscaling:add_proto_instance" if t
+            end
+          }
+
           desc("Remove AutoScaling settings.")
           task(:destroy, :roles => :app, :except => { :no_release => true }) {
             destroy_alarm
