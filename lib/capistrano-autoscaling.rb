@@ -4,6 +4,7 @@ require "yaml"
 
 module Capistrano
   module AutoScaling
+    
     def self.extended(configuration)
       configuration.load {
         namespace(:autoscaling) {
@@ -149,6 +150,11 @@ module Capistrano
           _cset(:autoscaling_images) {
             autoscaling_ec2_client.images.with_owner("self").filter("name", "#{autoscaling_image_name_prefix}*").to_a
           }
+
+          def self.proto_instance(task)
+            ec2_dns = (find_servers_for_task(current_task)[0]).host
+            autoscaling_ec2_instances.find { |instance| instance.public_dns_name == ec2_dns }
+          end
 
 ## LaunchConfiguration
           _cset(:autoscaling_launch_configuration) {
@@ -338,8 +344,9 @@ module Capistrano
                 logger.debug("Creating AMI: #{autoscaling_image_name}")
                 run("sync; sync; sync") # force flushing to disk
                 set(:autoscaling_image, autoscaling_ec2_client.images.create(
-                  autoscaling_image_options.merge(:name => autoscaling_image_name, :instance_id => autoscaling_image_instance.id)))
-                sleep(autoscaling_wait_interval) until autoscaling_image.exists?
+                  autoscaling_image_options.merge(:name => autoscaling_image_name, 
+                  :instance_id => self.proto_instance(current_task).id)))
+                sleep(autoscaling_wait_interval) until autoscaling_image.state == :available
                 logger.debug("Created AMI: #{autoscaling_image.name} (#{autoscaling_image.id})")
                 [["Name", {:value => autoscaling_image_name}], [autoscaling_image_tag_name]].each do |tag_name, tag_options|
                   begin
@@ -383,8 +390,11 @@ module Capistrano
                 logger.debug("Found AutoScalingGroup: #{autoscaling_group.name} (#{autoscaling_group.launch_configuration_name})")
                 autoscaling_group.update(autoscaling_group_options.merge(:launch_configuration => autoscaling_launch_configuration))
               else
+                logger.debug("autoscaling_elb_instance name is #{autoscaling_elb_instance.name}")
+                logger.debug("autoscaling_launch_configuration name is #{autoscaling_launch_configuration.name}")
                 if autoscaling_elb_instance.exists? and autoscaling_launch_configuration.exists?
                   logger.debug("Creating AutoScalingGroup: #{autoscaling_group_name} (#{autoscaling_launch_configuration.name})")
+                  logger.debug("autoscaling_group_options = #{autoscaling_group_options.inspect}")
                   set(:autoscaling_group, autoscaling_autoscaling_client.groups.create(autoscaling_group_name,
                     autoscaling_group_options.merge(:launch_configuration => autoscaling_launch_configuration,
                     :load_balancers => [ autoscaling_elb_instance ])))
@@ -546,6 +556,8 @@ module Capistrano
           task(:status, :roles => :app, :except => { :no_release => true }) {
             status = {}
 
+            logger.info("Autoscaling Group: #{autoscaling_group.name}") if autoscaling_group
+            
             if autoscaling_group and autoscaling_group.exists?
               status[:name] = autoscaling_group.name
               status[:availability_zone_names] = autoscaling_group.availability_zone_names.to_a
@@ -581,6 +593,7 @@ module Capistrano
               load_balancers = [ autoscaling_elb_instance ]
             end
             if load_balancers
+              logger.info("Value of load_balancers: #{load_balancers.to_s}")
               status[:load_balancers] = load_balancers.map { |lb|
                 {
                   :name => lb.name,
