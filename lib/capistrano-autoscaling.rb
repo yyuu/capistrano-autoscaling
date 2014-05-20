@@ -541,7 +541,7 @@ module Capistrano
 
             launch_configuration = nil
             if autoscaling_group and autoscaling_group.exists?
-              launch_configuration = autoscaling_gruop.launch_configuration
+              launch_configuration = autoscaling_group.launch_configuration
             elsif autoscaling_launch_configuration and autoscaling_launch_configuration.exists?
               launch_configuration = autoscaling_launch_configuration
             end
