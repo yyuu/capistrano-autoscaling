@@ -4,6 +4,7 @@ require "yaml"
 
 module Capistrano
   module AutoScaling
+    
     def self.extended(configuration)
       configuration.load {
         namespace(:autoscaling) {
@@ -150,6 +151,11 @@ module Capistrano
             autoscaling_ec2_client.images.with_owner("self").filter("name", "#{autoscaling_image_name_prefix}*").to_a
           }
 
+          def self.proto_instance(task)
+            ec2_dns = (find_servers_for_task(current_task)[0]).host
+            autoscaling_ec2_instances.find { |instance| instance.public_dns_name == ec2_dns }
+          end
+
 ## LaunchConfiguration
           _cset(:autoscaling_launch_configuration) {
             autoscaling_autoscaling_client.launch_configurations[autoscaling_launch_configuration_name] rescue nil
@@ -192,16 +198,16 @@ module Capistrano
           _cset(:autoscaling_shrink_policy_name) { "#{autoscaling_shrink_policy_name_prefix}#{autoscaling_application}" }
           _cset(:autoscaling_expand_policy_options) {
             {
-              :adjustment => fetch(:autoscaling_expand_policy_adjustment, 1),
+              :scaling_adjustment => fetch(:autoscaling_expand_policy_adjustment, 1),
               :cooldown => fetch(:autoscaling_expand_policy_cooldown, 300),
-              :type => fetch(:autoscaling_expand_policy_type, "ChangeInCapacity"),
+              :adjustment_type => fetch(:autoscaling_expand_policy_type, "ChangeInCapacity"),
             }.merge(fetch(:autoscaling_expand_policy_extra_options, {}))
           }
           _cset(:autoscaling_shrink_policy_options) {
             {
-              :adjustment => fetch(:autoscaling_shrink_policy_adjustment, -1),
+              :scaling_adjustment => fetch(:autoscaling_shrink_policy_adjustment, -1),
               :cooldown => fetch(:autoscaling_shrink_policy_cooldown, 300),
-              :type => fetch(:autoscaling_shrink_policy_type, "ChangeInCapacity"),
+              :adjustment_type => fetch(:autoscaling_shrink_policy_type, "ChangeInCapacity"),
             }.merge(fetch(:autoscaling_shrink_policy_extra_options, {}))
           }
           _cset(:autoscaling_expand_policy) { autoscaling_group.scaling_policies[autoscaling_expand_policy_name] rescue nil }
@@ -251,6 +257,21 @@ module Capistrano
           on(:load) {
             [ autoscaling_setup_after_hooks ].flatten.each do |t|
               after t, "autoscaling:setup" if t
+            end
+          }
+
+          desc("Add the EC2 Instance used as the AMI prototype to the load balancer from :app")
+          task(:add_proto_instance, :roles => :app, :except => { :no_release => true }) {
+            # Find the host name for :app and get its instance
+            ec2_dns = (find_servers_for_task(current_task)[0]).host
+            app_instance = autoscaling_aws.ec2.instances.find { |instance| instance.public_dns_name == ec2_dns }
+
+            autoscaling_elb_instance.instances.register app_instance            
+          }
+          _cset(:autoscaling_add_proto_instance_after_hooks, ["autoscaling:setup"])
+          on(:load) {
+            [ autoscaling_add_proto_instance_after_hooks ].flatten.each do |t|
+              after t, "autoscaling:add_proto_instance" if t
             end
           }
 
@@ -323,8 +344,9 @@ module Capistrano
                 logger.debug("Creating AMI: #{autoscaling_image_name}")
                 run("sync; sync; sync") # force flushing to disk
                 set(:autoscaling_image, autoscaling_ec2_client.images.create(
-                  autoscaling_image_options.merge(:name => autoscaling_image_name, :instance_id => autoscaling_image_instance.id)))
-                sleep(autoscaling_wait_interval) until autoscaling_image.exists?
+                  autoscaling_image_options.merge(:name => autoscaling_image_name, 
+                  :instance_id => self.proto_instance(current_task).id)))
+                sleep(autoscaling_wait_interval) until autoscaling_image.state == :available
                 logger.debug("Created AMI: #{autoscaling_image.name} (#{autoscaling_image.id})")
                 [["Name", {:value => autoscaling_image_name}], [autoscaling_image_tag_name]].each do |tag_name, tag_options|
                   begin
@@ -368,8 +390,11 @@ module Capistrano
                 logger.debug("Found AutoScalingGroup: #{autoscaling_group.name} (#{autoscaling_group.launch_configuration_name})")
                 autoscaling_group.update(autoscaling_group_options.merge(:launch_configuration => autoscaling_launch_configuration))
               else
+                logger.debug("autoscaling_elb_instance name is #{autoscaling_elb_instance.name}")
+                logger.debug("autoscaling_launch_configuration name is #{autoscaling_launch_configuration.name}")
                 if autoscaling_elb_instance.exists? and autoscaling_launch_configuration.exists?
                   logger.debug("Creating AutoScalingGroup: #{autoscaling_group_name} (#{autoscaling_launch_configuration.name})")
+                  logger.debug("autoscaling_group_options = #{autoscaling_group_options.inspect}")
                   set(:autoscaling_group, autoscaling_autoscaling_client.groups.create(autoscaling_group_name,
                     autoscaling_group_options.merge(:launch_configuration => autoscaling_launch_configuration,
                     :load_balancers => [ autoscaling_elb_instance ])))
@@ -531,6 +556,8 @@ module Capistrano
           task(:status, :roles => :app, :except => { :no_release => true }) {
             status = {}
 
+            logger.info("Autoscaling Group: #{autoscaling_group.name}") if autoscaling_group
+            
             if autoscaling_group and autoscaling_group.exists?
               status[:name] = autoscaling_group.name
               status[:availability_zone_names] = autoscaling_group.availability_zone_names.to_a
@@ -566,6 +593,7 @@ module Capistrano
               load_balancers = [ autoscaling_elb_instance ]
             end
             if load_balancers
+              logger.info("Value of load_balancers: #{load_balancers.to_s}")
               status[:load_balancers] = load_balancers.map { |lb|
                 {
                   :name => lb.name,
